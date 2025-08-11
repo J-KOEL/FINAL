@@ -1,38 +1,58 @@
-# modules_decoder/non_illuminated.py
-from shared.utils import load_csv_dict, load_alternate_map
+# modules_decoder/incandescent_pushbutton.py
+from shared.utils import load_csv_dict
 
-DATA_DIR = "assets/data/"
+DATA_DIR = "assets/data/"  # relative to your repo root
 
 def load_data():
-    operator_lookup = load_csv_dict(DATA_DIR + "NonIlluminatedPushbuttonOperator.csv")
-    color_lookup    = load_csv_dict(DATA_DIR + "NonIlluminatedPushbuttonButtonColor.csv")
-    circuit_lookup  = load_csv_dict(DATA_DIR + "Circuit.csv")
-    alt_map         = load_alternate_map(DATA_DIR + "AlternateToStandard.csv")  # <-- if you have one
-    return operator_lookup, color_lookup, circuit_lookup, alt_map
+    """
+    Loads lookup dictionaries for Incandescent Pushbutton:
+    10250T + LightUnit(3) + LensColor(3) + '-' + Circuit(...)
+    """
+    light_unit_lookup = load_csv_dict(
+        DATA_DIR + "IlluminatedPushbuttonIncandescentLightUnit.csv"
+    )
+    lens_color_lookup = load_csv_dict(
+        DATA_DIR + "illuminatedPushbuttonIncandescentLensColor.csv"
+    )
+    circuit_lookup = load_csv_dict(
+        DATA_DIR + "Circuit.csv"
+    )
+    return light_unit_lookup, lens_color_lookup, circuit_lookup
 
-def decode(catalog_number, operator_lookup, color_lookup, circuit_lookup, alt_map):
+
+def decode(catalog_number, light_unit_lookup, lens_color_lookup, circuit_lookup):
+    """
+    Decodes a catalog number like: 10250TxxxYYY-ZZZ...
+    Where:
+      - xxx = Light Unit code (3)
+      - YYY = Lens Color code (3)
+      - ZZZ... = Circuit code (remaining after optional dash)
+    Returns a dict of human-friendly fields or None if it cannot decode.
+    """
+    if not catalog_number:
+        return None
+
     normalized = str(catalog_number).replace("-", "").strip().upper()
 
-    # Translate alternate to standard if present
-    normalized = alt_map.get(normalized, normalized)
-
-    if not (normalized.startswith("10250T") and len(normalized) > 8):
+    # Basic format guard
+    if not (normalized.startswith("10250T") and len(normalized) > 9):
         return None
 
+    # Strip the 10250T prefix and parse the rest
     code_part = normalized[6:]
-    # Example: 10250T + Operator(2) + Color(1) + '-' + Circuit
-    if len(code_part) < 3:
+    if len(code_part) < 9:
+        # We expect at least 3 + 3 + 3 characters
         return None
 
-    operator_code = code_part[:2]
-    color_code    = code_part[2:3]
-    circuit_code  = code_part[3:]
+    light_unit_code = code_part[:3]
+    lens_color_code = code_part[3:6]
+    circuit_code    = code_part[6:]  # whatever remains
 
     return {
-        "Operator":          operator_lookup.get(operator_code, "Unknown Operator"),
-        "Button Color":      color_lookup.get(color_code, "Unknown Button Color"),
-        "Circuit Type":      circuit_lookup.get(circuit_code, "Unknown Circuit Type"),
-        "Operator P/N":      f"10250T{operator_code}",
-        "Color P/N":         f"10250T{color_code}",
+        "Light Unit":        light_unit_lookup.get(light_unit_code, "Unknown Light Unit"),
+        "Lens Color":        lens_color_lookup.get(lens_color_code, "Unknown Lens Color"),
+        "Circuit Type":      circuit_lookup.get(circuit_code,   "Unknown Circuit Type"),
+        "Light Unit P/N":    f"10250T{light_unit_code}",
+        "Lens P/N":          f"10250T{lens_color_code}",
         "Contact Block P/N": f"10250T{circuit_code}",
     }
