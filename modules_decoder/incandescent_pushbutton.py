@@ -1,42 +1,52 @@
 # modules_decoder/incandescent_pushbutton.py
-from pathlib import Path
-import streamlit as st
 from shared.utils import load_csv_dict
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "assets" / "data"
+DATA_DIR = "assets/data/"  # relative to your repo root
 
-def norm(s: str) -> str:
-    return str(s).strip().upper().replace("-", "").replace(" ", "").replace("_", "")
-
-def normalize_keys(d: dict) -> dict:
-    return {norm(k): v for k, v in d.items()}
-
-@st.cache_data(show_spinner=False)
 def load_data():
-    # Use the EXACT filenames present in assets/data
-    lu = load_csv_dict(DATA_DIR / "IlluminatedPushbuttonIncandescentLightUnit.csv")
-    lc = load_csv_dict(DATA_DIR / "IlluminatedPushbuttonIncandescentLensColor.csv")
-    ci = load_csv_dict(DATA_DIR / "Circuit 19.csv")  # or "Circuit.csv" if that's the real file
-    # Normalize keys to match input normalization
-    return normalize_keys(lu), normalize_keys(lc), normalize_keys(ci)
+    """
+    Loads lookup dictionaries for Incandescent Pushbutton:
+    10250T + LightUnit(3) + LensColor(3) + '-' + Circuit(...)
+    """
+    light_unit_lookup = load_csv_dict(
+        DATA_DIR + "IlluminatedPushbuttonIncandescentLightUnit.csv"
+    )
+    lens_color_lookup = load_csv_dict(
+        DATA_DIR + "illuminatedPushbuttonIncandescentLensColor.csv"
+    )
+    circuit_lookup = load_csv_dict(
+        DATA_DIR + "Circuit.csv"
+    )
+    return light_unit_lookup, lens_color_lookup, circuit_lookup
+
 
 def decode(catalog_number, light_unit_lookup, lens_color_lookup, circuit_lookup):
     """
-    Decodes: 10250T + LightUnit(3) + LensColor(3) + optional '-' + Circuit(...)
+    Decodes a catalog number like: 10250TxxxYYY-ZZZ...
+    Where:
+      - xxx = Light Unit code (3)
+      - YYY = Lens Color code (3)
+      - ZZZ... = Circuit code (remaining after optional dash)
+    Returns a dict of human-friendly fields or None if it cannot decode.
     """
     if not catalog_number:
         return None
 
-    s = norm(catalog_number)
+    normalized = str(catalog_number).replace("-", "").strip().upper()
 
-    # Minimal length: 6 prefix + 3 + 3 + 3 = 15
-    if not (s.startswith("10250T") and len(s) >= 15):
+    # Basic format guard
+    if not (normalized.startswith("10250T") and len(normalized) > 9):
         return None
 
-    code_part = s[6:]
+    # Strip the 10250T prefix and parse the rest
+    code_part = normalized[6:]
+    if len(code_part) < 9:
+        # We expect at least 3 + 3 + 3 characters
+        return None
+
     light_unit_code = code_part[:3]
     lens_color_code = code_part[3:6]
-    circuit_code    = code_part[6:]  # remaining chars (we removed '-' in norm)
+    circuit_code    = code_part[6:]  # whatever remains
 
     return {
         "Light Unit":        light_unit_lookup.get(light_unit_code, "Unknown Light Unit"),
