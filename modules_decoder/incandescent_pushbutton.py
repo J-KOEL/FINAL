@@ -1,12 +1,7 @@
 # modules_decoder/incandescent_pushbutton.py
-import re
 from shared.utils import load_csv_dict
 
-DATA_DIR = "assets/data/"  # keep as-is if this path works in your app
-
-def _norm(s: str) -> str:
-    # Keep only A–Z and 0–9; removes spaces, hyphens, en-dashes, slashes, etc.
-    return re.sub(r'[^A-Z0-9]', '', str(s).upper())
+DATA_DIR = "assets/data/"  # relative to your repo root
 
 def load_data():
     """
@@ -17,35 +12,41 @@ def load_data():
         DATA_DIR + "IlluminatedPushbuttonIncandescentLightUnit.csv"
     )
     lens_color_lookup = load_csv_dict(
-        DATA_DIR + "IlluminatedPushbuttonIncandescentLensColor.csv"
+        DATA_DIR + "illuminatedPushbuttonIncandescentLensColor.csv"
     )
     circuit_lookup = load_csv_dict(
-        DATA_DIR + "Circuit.csv"  # keep whatever filename you actually use
+        DATA_DIR + "Circuit.csv"
     )
     return light_unit_lookup, lens_color_lookup, circuit_lookup
 
 
 def decode(catalog_number, light_unit_lookup, lens_color_lookup, circuit_lookup):
     """
-    Decodes: 10250T + LightUnit(3) + LensColor(3) + Circuit(>=1)
-    Returns a dict on success, or None if the *format* is invalid.
+    Decodes a catalog number like: 10250TxxxYYY-ZZZ...
+    Where:
+      - xxx = Light Unit code (3)
+      - YYY = Lens Color code (3)
+      - ZZZ... = Circuit code (remaining after optional dash)
+    Returns a dict of human-friendly fields or None if it cannot decode.
     """
     if not catalog_number:
         return None
 
-    s = _norm(catalog_number)
+    normalized = str(catalog_number).replace("-", "").strip().upper()
 
-    # Minimal length: 6 (prefix) + 3 + 3 + 1 (min circuit) = 13
-    if not (s.startswith("10250T") and len(s) >= 13):
+    # Basic format guard
+    if not (normalized.startswith("10250T") and len(normalized) > 9):
         return None
 
-    code_part = s[6:]
-    if len(code_part) < 7:  # 3 + 3 + at least 1 for circuit
+    # Strip the 10250T prefix and parse the rest
+    code_part = normalized[6:]
+    if len(code_part) < 9:
+        # We expect at least 3 + 3 + 3 characters
         return None
 
     light_unit_code = code_part[:3]
     lens_color_code = code_part[3:6]
-    circuit_code    = code_part[6:]  # remaining chars
+    circuit_code    = code_part[6:]  # whatever remains
 
     return {
         "Light Unit":        light_unit_lookup.get(light_unit_code, "Unknown Light Unit"),
