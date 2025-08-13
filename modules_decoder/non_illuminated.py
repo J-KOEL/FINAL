@@ -37,7 +37,7 @@ def decode(catalog_number, operator_lookup, color_lookup, circuit_lookup, alt_ma
 
     operator_code = code_part[:2]
     color_code    = code_part[2]
-    circuit_code  = code_part[2:]
+    circuit_code  = code_part[3:]
 
     return {
         "Operator Type":      operator_lookup.get(operator_code, "Unknown Operator Code"),
