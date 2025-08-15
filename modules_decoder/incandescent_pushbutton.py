@@ -8,15 +8,10 @@ def load_data():
     Loads lookup dictionaries for Incandescent Pushbutton:
     10250T + LightUnit(3) + LensColor(3) + '-' + Circuit(...)
     """
-    light_unit_lookup = load_csv_dict(
-        DATA_DIR + "IlluminatedPushbuttonIncandescentLightUnit.csv"
-    )
-    lens_color_lookup = load_csv_dict(
-        DATA_DIR + "illuminatedPushbuttonIncandescentLensColor.csv"
-    )
-    circuit_lookup = load_csv_dict(
-        DATA_DIR + "Circuit.csv"
-    )
+    # Note: load_csv_dict automatically maps Code -> Label when those columns exist.
+    light_unit_lookup = load_csv_dict(DATA_DIR + "IlluminatedPushbuttonIncandescentLightUnit.csv")
+    lens_color_lookup = load_csv_dict(DATA_DIR + "illuminatedPushbuttonIncandescentLensColor.csv")
+    circuit_lookup = load_csv_dict(DATA_DIR + "Circuit.csv")
     return light_unit_lookup, lens_color_lookup, circuit_lookup
 
 
